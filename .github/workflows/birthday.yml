@@ -12,7 +12,7 @@ jobs:
     name: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Verify artifact exists
         run: |
@@ -39,7 +39,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check required elements are present
         run: |
@@ -90,7 +90,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Scan for hardcoded secrets
         run: |
@@ -125,42 +125,47 @@ jobs:
     needs: [build, test, security-scan]
     runs-on: ubuntu-latest
     steps:
-      - name: Health check production
+      - name: Health check production and publish summary
         run: |
           URL="https://zubairazafar.github.io/pipeline-demo/"
+          HEALTHY="false"
           echo "$ curl -s $URL"
           for i in 1 2 3 4 5 6; do
             CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
             if [ "$CODE" = "200" ]; then
               echo "{\"status\":\"alive\",\"age\":26,\"vibes\":\"immaculate\"}"
-              echo "HEALTHY=true" >> "$GITHUB_ENV"
-              exit 0
+              HEALTHY="true"
+              break
             fi
-            echo "attempt $i: HTTP $CODE — retrying in 15s"
-            sleep 15
+            echo "attempt $i: HTTP $CODE - retrying in 10s"
+            sleep 10
           done
-          echo "::warning::Pages not responding yet. This is normal on a fresh deploy."
-          echo "HEALTHY=false" >> "$GITHUB_ENV"
 
-      - name: Write job summary
-        run: |
+          if [ "$HEALTHY" = "true" ]; then
+            RESULT="production healthy"
+          else
+            RESULT="no response yet"
+            echo "::warning::Pages not responding yet. Normal on a fresh deploy."
+          fi
+
           {
-            echo "## pipeline #26 — passed"
+            echo "## pipeline #26 - passed"
             echo ""
             echo "| stage | result |"
-            echo "|---|---|"
-            echo "| build | tagged \`birthday:26\` |"
+            echo "| --- | --- |"
+            echo "| build | tagged birthday:26 |"
             echo "| test | 4 passed, 1 skipped |"
             echo "| security-scan | 5 findings, risk accepted |"
-            echo "| deploy | production healthy: \`$HEALTHY\` |"
+            echo "| deploy | $RESULT |"
             echo ""
-            echo "**Artifact:** \`birthday-wish.txt\`"
+            echo "**Artifact:** birthday-wish.txt"
             echo ""
-            echo "> Nine years in. \`v10.0.0\` scheduled for September 2027."
+            echo "> Nine years in. v10.0.0 scheduled for September 2027."
             echo ""
             echo "If you're reading this, you went looking. Of course you did."
             echo ""
-            echo "— Zubaira"
+            echo "- Zubaira"
           } >> "$GITHUB_STEP_SUMMARY"
+
           echo "Uploading artifact: birthday-wish.txt"
           echo "Job succeeded"
