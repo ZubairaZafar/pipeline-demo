@@ -207,6 +207,7 @@ body::before{
 .cake{
   font-size:12px;line-height:1.25;color:var(--cake);
   display:inline-block;text-align:left;margin-bottom:8px;
+  white-space:pre;font-family:var(--mono);
 }
 .flame{color:var(--warn);animation:flick 1.5s ease-in-out infinite}
 .flame:nth-child(2){animation-delay:.35s}
@@ -479,12 +480,13 @@ $("hbd").textContent      = `Happy ${C.age}th, ${C.name}`;
 $("sub").textContent      = `deployed to production by ${C.yourName} · ${new Date().getFullYear()}`;
 $("note").textContent     = C.message.join("\n");
 $("cakeart").innerHTML =
-`      <span class="flame">(</span>   <span class="flame">(</span>   <span class="flame">(</span>
-      |   |   |
- _____|___|___|_____
-|  ~~~~~~~~~~~~~~~  |
-|___________________|
-/_____________________\\`;
+`       <span class="flame">(</span>   <span class="flame">(</span>   <span class="flame">(</span>
+       |   |   |
+  _____|___|___|_____
+  |                 |
+  |~~~~~~~~~~~~~~~~~|
+  |_________________|
+ /___________________\\`;
 
 /* ── confetti ───────────────────────────────────────────── */
 function confetti(){
