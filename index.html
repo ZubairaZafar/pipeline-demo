@@ -207,7 +207,6 @@ body::before{
 .cake{
   font-size:12px;line-height:1.25;color:var(--cake);
   display:inline-block;text-align:left;margin-bottom:8px;
-  white-space:pre;
 }
 .flame{color:var(--warn);animation:flick 1.5s ease-in-out infinite}
 .flame:nth-child(2){animation-delay:.35s}
@@ -527,6 +526,7 @@ const CMDS = {
   <span class="c-cake">who</span>             who's logged in
   <span class="c-cake">history</span>         what got you here
   <span class="c-cake">clear</span>           clean slate
+  <span class="c-cake">hints</span>           for when you give up
 
 Not everything is listed. Try the things you'd actually type —
 places we've been, games we've played, songs you've ruined.`),
@@ -571,6 +571,22 @@ and never once complained about it.
 <span class="c-dim">Queue accepted. Same as always.</span>`),
 
   taekwondo: () => out(`<span class="c-dim">Capability last active: age 17.\nStatus: dormant, deterrent, extremely funny to bring up.</span>`),
+
+  hints: () => out(
+`<span class="c-dim">Fine. Here's the rest of it:</span>
+
+  <span class="c-cake">dota</span>                       <span class="c-dim">obviously</span>
+  <span class="c-cake">celoso</span>                     <span class="c-dim">or 'sing'. you know exactly why.</span>
+  <span class="c-cake">taekwondo</span>                  <span class="c-dim">age 17. never forgotten.</span>
+  <span class="c-cake">cat northern-areas.md</span>      <span class="c-dim">the drive up</span>
+  <span class="c-cake">cat lahore.md</span>              <span class="c-dim">everything I made you eat</span>
+  <span class="c-cake">cat todo-someday.md</span>        <span class="c-dim">what's still pending</span>
+  <span class="c-cake">cat .secrets</span>               <span class="c-dim">don't bother</span>
+
+<span class="c-dim">There are a few more. Those you'll have to find on your own.</span>`),
+  hint: () => CMDS.hints(),
+  secrets: () => CMDS.hints(),
+  more: () => CMDS.hints(),
 
   celoso: () => CMDS.translate(),
   sing: () => CMDS.translate(),
@@ -638,7 +654,7 @@ function run(raw){
   const key = q.toLowerCase().replace(/\s+/g," ");
   const fn = CMDS[key] || CMDS[key.replace(/^cat\s+/,"cat ")];
   if (fn) fn();
-  else out(`<span class="c-fail">${esc(q.split(" ")[0])}: command not found</span> <span class="c-dim">— try 'help'</span>`);
+  else out(`<span class="c-fail">${esc(q.split(" ")[0])}: command not found</span> <span class="c-dim">— try 'help', or 'hints' if you're stuck</span>`);
 }
 
 cmd.addEventListener("keydown", e => {
