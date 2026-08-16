@@ -1,0 +1,166 @@
+name: pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+
+  # ── stage 1 ───────────────────────────────────────────────
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify artifact exists
+        run: |
+          test -f index.html || { echo "::error::index.html missing at repo root"; exit 1; }
+          echo "Sending build context to Docker daemon  $(du -h index.html | cut -f1)"
+
+      - name: Report build output
+        run: |
+          LINES=$(wc -l < index.html)
+          BYTES=$(wc -c < index.html)
+          echo "Step 1/4 : FROM friendship:9y-stable"
+          echo " ---> Using cache"
+          echo "Step 2/4 : RUN add-year --to=airej --force"
+          echo " ---> 25 -> 26"
+          echo "Step 3/4 : COPY ./memories /var/lib/us"
+          echo "Step 4/4 : LABEL maintainer=\"Zubaira\""
+          echo ""
+          echo "$LINES lines, $BYTES bytes"
+          echo "Successfully tagged birthday:26"
+
+  # ── stage 2 ───────────────────────────────────────────────
+  test:
+    name: test
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required elements are present
+        run: |
+          FAIL=0
+          for ID in 'id="log"' 'id="rail"' 'id="reveal"' 'id="term"' 'id="cmd"'; do
+            if grep -q "$ID" index.html; then
+              printf 'test_element_present[%-12s] PASSED\n' "$ID"
+            else
+              printf 'test_element_present[%-12s] FAILED\n' "$ID"
+              FAIL=1
+            fi
+          done
+          exit $FAIL
+
+      - name: Parse inline scripts
+        run: |
+          cat > /tmp/check.js <<'EOF'
+          const fs = require('fs');
+          const src = fs.readFileSync('index.html', 'utf8');
+          const scripts = [...src.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+          if (scripts.length < 2) {
+            console.error('test_script_count ............................. FAILED');
+            process.exit(1);
+          }
+          scripts.forEach((code, i) => {
+            try {
+              new Function(code);
+              console.log(`test_script_parses[${i}] ....................... PASSED`);
+            } catch (e) {
+              console.error(`test_script_parses[${i}] ....................... FAILED`);
+              console.error('  ' + e.message);
+              process.exit(1);
+            }
+          });
+          if (!/const CONFIG = \{/.test(src)) {
+            console.error('test_config_block_present .................... FAILED');
+            process.exit(1);
+          }
+          console.log('test_config_block_present .................... PASSED');
+          console.log('test_refuses_one_more_eatery ................. SKIPPED');
+          console.log('  \u21b3 cannot test: has never once refused');
+          EOF
+          node /tmp/check.js
+
+  # ── stage 3 ───────────────────────────────────────────────
+  security-scan:
+    name: security-scan
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for hardcoded secrets
+        run: |
+          echo "Scanning airej/ ..."
+          if grep -nE '(AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY-----)' index.html; then
+            echo "::error::secret material detected"
+            exit 1
+          fi
+          echo "No secrets found."
+
+      - name: Verify no untrusted third-party scripts
+        run: |
+          if grep -oE '<script[^>]+src="[^"]+"' index.html; then
+            echo "::error::unexpected external script"
+            exit 1
+          fi
+          echo "No external scripts. Only fonts are loaded remotely."
+
+      - name: Report findings
+        run: |
+          echo "[CRITICAL] Introduced subject to Dota 2 in 2017. No rollback path exists."
+          echo "[CRITICAL] Unlicensed translation engine: airej-translate v1.0."
+          echo "[HIGH]     Dependency 'dota2' pinned to version 'forever'."
+          echo "[MEDIUM]   Liked by 100% of scanned classmates. No known exploit."
+          echo "[LOW]      Taekwondo dormant since age 17."
+          echo ""
+          echo "5 findings. Risk accepted by Zubaira. Proceeding anyway."
+
+  # ── stage 4 ───────────────────────────────────────────────
+  deploy:
+    name: deploy
+    needs: [build, test, security-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check production
+        run: |
+          URL="https://zubairazafar.github.io/pipeline-demo/"
+          echo "$ curl -s $URL"
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+            if [ "$CODE" = "200" ]; then
+              echo "{\"status\":\"alive\",\"age\":26,\"vibes\":\"immaculate\"}"
+              echo "HEALTHY=true" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            echo "attempt $i: HTTP $CODE — retrying in 15s"
+            sleep 15
+          done
+          echo "::warning::Pages not responding yet. This is normal on a fresh deploy."
+          echo "HEALTHY=false" >> "$GITHUB_ENV"
+
+      - name: Write job summary
+        run: |
+          {
+            echo "## pipeline #26 — passed"
+            echo ""
+            echo "| stage | result |"
+            echo "|---|---|"
+            echo "| build | tagged \`birthday:26\` |"
+            echo "| test | 4 passed, 1 skipped |"
+            echo "| security-scan | 5 findings, risk accepted |"
+            echo "| deploy | production healthy: \`$HEALTHY\` |"
+            echo ""
+            echo "**Artifact:** \`birthday-wish.txt\`"
+            echo ""
+            echo "> Nine years in. \`v10.0.0\` scheduled for September 2027."
+            echo ""
+            echo "If you're reading this, you went looking. Of course you did."
+            echo ""
+            echo "— Zubaira"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Uploading artifact: birthday-wish.txt"
+          echo "Job succeeded"
